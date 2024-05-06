@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 
 {% block title %}
-Soccer Jersey Store - Home
+ShoesStore - Home
 {% endblock %}
 
 {% block body %}
@@ -31,7 +31,7 @@ Soccer Jersey Store - Home
                       {% else %}
                       <input type="hidden" name="loggedin" value="1" />
                       {% endif %}
-                      <input type="submit" class="btn btn-primary addToCart" value="Add To Cart" /><br /><br />
+                      <input type="submit" class="btn btn-primary addToCart" value="Add To Cart" /><br /><br/>
                       <div class="alert alert-danger flashMessage" style="text-align: center; display:none; font-size:0.9em;"></div>
                     </form>
                   </div>
@@ -39,7 +39,5 @@ Soccer Jersey Store - Home
           </div>
       {% endfor %}
       </div>
-    </div>
-  </main>
 
 {% endblock %}
