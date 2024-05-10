@@ -1,4 +1,5 @@
 from cs50 import SQL
+import time
 from flask_session import Session
 from flask import Flask, render_template, redirect, request, session, jsonify, url_for
 from datetime import datetime
@@ -12,7 +13,7 @@ app.config["SESSION_TYPE"] = "filesystem"
 Session(app)
 
 # Creates a connection to the database
-db = SQL ( "sqlite:///data.db" )
+db = SQL( "sqlite:///data.db" )
 
 @app.route("/")
 def index():
@@ -31,7 +32,7 @@ def index():
         shirts = db.execute("SELECT * FROM shirts ORDER BY team ASC")
         shirtsLen = len(shirts)
         return render_template ("index.html", shoppingCart=shoppingCart, shirts=shirts, shopLen=shopLen, shirtsLen=shirtsLen, total=total, totItems=totItems, display=display, session=session )
-    return render_template ( "index.html", shirts=shirts, shoppingCart=shoppingCart, shirtsLen=shirtsLen, shopLen=shopLen, total=total, totItems=totItems, display=display)
+    return render_template ("index.html", shirts=shirts, shoppingCart=shoppingCart, shirtsLen=shirtsLen, shopLen=shopLen, total=total, totItems=totItems, display=display)
 
 
 @app.route("/buy/")
@@ -271,13 +272,30 @@ def cart():
     # Render shopping cart
     return render_template("cart.html", shoppingCart=shoppingCart, shopLen=shopLen, total=total, totItems=totItems, display=display, session=session)
 
-@app.route('/feedback')
+@app.route('/feedback',methods=["GET","POST"])
 def feedback():
-    shoppingCart = []
-    shopLen = len(shoppingCart)
-    totItems, total, display = 0, 0, 0
+    if request.method == "GET":
+        shoppingCart = []
+        shopLen = len(shoppingCart)
+        totItems, total, display = 0, 0, 0
+        data=db.execute("SELECT * FROM feedbacks ")
+        feedbacks = sorted(data,key=lambda x: x["addtime"],reverse=True)
+        return render_template('feedback.html',shoppingCart=shoppingCart, shopLen=shopLen, total=total, totItems=totItems, display=display, session=session,feedbacks=feedbacks)
+    # Determine whether it is logged in status
+    if 'user' not in session:
+        return redirect("/")  
+    uid = session["uid"]
+    addtime = time.strftime("%Y-%m-%d %H:%M")
+    email = request.form.get('email')
+    nickname = request.form.get('username')
+    comments = request.form.get('content')
+    id = db.execute(
+        "INSERT INTO feedbacks (uid,nickname,comments,email,addtime) values (:uid,:nickname,:comments,:email,:addtime)",
+       uid=uid, nickname=nickname, addtime=addtime, comments=comments, email=email)
+    return redirect("/feedback")
 
-    return render_template('feedback.html',shoppingCart=shoppingCart, shopLen=shopLen, total=total, totItems=totItems, display=display, session=session)
+
+
 
 # @app.errorhandler(404)
 # def pageNotFound( e ):
@@ -288,4 +306,4 @@ def feedback():
 
 # Only needed if Flask run is not used to execute the server
 if __name__ == "__main__":
-   app.run( host='0.0.0.0', port=8080 )
+   app.run( host='0.0.0.0', port=8080 ,debug=True)
