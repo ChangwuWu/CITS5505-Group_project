@@ -1,7 +1,14 @@
 from cs50 import SQL
+import time
 from flask_session import Session
-from flask import Flask, render_template, redirect, request, session, jsonify, url_for
+from flask import Flask, render_template, redirect, request, session, jsonify, url_for, flash
 from datetime import datetime
+
+from PIL import Image, ImageDraw, ImageFont
+import random
+import string
+import base64
+import io
 
 # # Instantiate Flask object named app
 app = Flask(__name__)
@@ -12,26 +19,37 @@ app.config["SESSION_TYPE"] = "filesystem"
 Session(app)
 
 # Creates a connection to the database
-db = SQL ( "sqlite:///data.db" )
+db = SQL( "sqlite:///data.db" )
 
 @app.route("/")
 def index():
-    shirts = db.execute("SELECT * FROM shirts ORDER BY team ASC")
-    shirtsLen = len(shirts)
+    kind = request.args.get('gender')
+    continent = request.args.get('category')
+
+    if kind and continent:
+        shoes = db.execute("SELECT * FROM shoes WHERE kind = :kind and continent = :continent ORDER BY team ASC",kind=kind, continent=continent )
+    elif kind:
+        shoes = db.execute("SELECT * FROM shoes WHERE kind = :kind ORDER BY team ASC", kind=kind )
+    elif continent:
+        shoes = db.execute("SELECT * FROM shoes WHERE continent = :continent ORDER BY team ASC", continent=continent )
+    else:
+        shoes = db.execute("SELECT * FROM shoes ORDER BY team ASC")
+    shoesLen = len(shoes)
     # Initialize variables
     shoppingCart = []
+
     shopLen = len(shoppingCart)
     totItems, total, display = 0, 0, 0
     if 'user' in session:
-        shoppingCart = db.execute("SELECT team, image, SUM(qty), SUM(subTotal), price, id FROM cart GROUP BY team")
+        shoppingCart = db.execute("SELECT team,shoesize, image, SUM(qty), SUM(subTotal), price, id FROM cart GROUP BY team,shoesize")
         shopLen = len(shoppingCart)
         for i in range(shopLen):
             total += shoppingCart[i]["SUM(subTotal)"]
             totItems += shoppingCart[i]["SUM(qty)"]
-        shirts = db.execute("SELECT * FROM shirts ORDER BY team ASC")
-        shirtsLen = len(shirts)
-        return render_template ("index.html", shoppingCart=shoppingCart, shirts=shirts, shopLen=shopLen, shirtsLen=shirtsLen, total=total, totItems=totItems, display=display, session=session )
-    return render_template ( "index.html", shirts=shirts, shoppingCart=shoppingCart, shirtsLen=shirtsLen, shopLen=shopLen, total=total, totItems=totItems, display=display)
+        # shoes = db.execute("SELECT * FROM shoes ORDER BY team ASC")
+        # shoesLen = len(shoes)
+        # return render_template ("index.html", shoppingCart=shoppingCart, shoes=shoes, shopLen=shopLen, shoesLen=shoesLen, total=total, totItems=totItems, display=display, session=session )
+    return render_template ("index.html", shoes=shoes, shoppingCart=shoppingCart, shoesLen=shoesLen, shopLen=shopLen, total=total, totItems=totItems, display=display, session=session )
 
 
 @app.route("/buy/")
@@ -41,11 +59,12 @@ def buy():
     shopLen = len(shoppingCart)
     totItems, total, display = 0, 0, 0
     qty = int(request.args.get('quantity'))
+    shoesize = request.args.get('shoesize')
     if session:
         # Store id of the selected shirt
         id = int(request.args.get('id'))
         # Select info of selected shirt from database
-        goods = db.execute("SELECT * FROM shirts WHERE id = :id", id=id)
+        goods = db.execute("SELECT * FROM shoes WHERE id = :id", id=id)
         # Extract values from selected shirt record
         # Check if shirt is on sale to determine price
         if(goods[0]["onSale"] == 1):
@@ -56,19 +75,19 @@ def buy():
         image = goods[0]["image"]
         subTotal = qty * price
         # Insert selected shirt into shopping cart
-        db.execute("INSERT INTO cart (id, qty, team, image, price, subTotal) VALUES (:id, :qty, :team, :image, :price, :subTotal)", id=id, qty=qty, team=team, image=image, price=price, subTotal=subTotal)
-        shoppingCart = db.execute("SELECT team, image, SUM(qty), SUM(subTotal), price, id FROM cart GROUP BY team")
+        db.execute("INSERT INTO cart (id, qty, team, image, price, subTotal, shoesize) VALUES (:id, :qty, :team, :image, :price, :subTotal,:shoesize)", id=id, qty=qty, team=team, image=image, price=price, subTotal=subTotal,shoesize=shoesize)
+        shoppingCart = db.execute("SELECT team, shoesize, image, SUM(qty), SUM(subTotal), price, id FROM cart GROUP BY team, shoesize")
         shopLen = len(shoppingCart)
         # Rebuild shopping cart
         for i in range(shopLen):
             total += shoppingCart[i]["SUM(subTotal)"]
             totItems += shoppingCart[i]["SUM(qty)"]
-        # Select all shirts for home page view
-        shirts = db.execute("SELECT * FROM shirts ORDER BY team ASC")
-        shirtsLen = len(shirts)
+        # Select all shoes for home page view
+        shoes = db.execute("SELECT * FROM shoes ORDER BY team ASC")
+        shoesLen = len(shoes)
         # Go back to home page
-        return render_template ("index.html", shoppingCart=shoppingCart, shirts=shirts, shopLen=shopLen, shirtsLen=shirtsLen, total=total, totItems=totItems, display=display, session=session )
-
+        # return render_template ("index.html", shoppingCart=shoppingCart, shoes=shoes, shopLen=shopLen, shoesLen=shoesLen, total=total, totItems=totItems, display=display, session=session )
+        return redirect(url_for("index"))
 
 @app.route("/update/")
 def update():
@@ -77,12 +96,13 @@ def update():
     shopLen = len(shoppingCart)
     totItems, total, display = 0, 0, 0
     qty = int(request.args.get('quantity'))
+    shoesize = request.args.get('shoesize')
     if session:
         # Store id of the selected shirt
         id = int(request.args.get('id'))
         db.execute("DELETE FROM cart WHERE id = :id", id=id)
         # Select info of selected shirt from database
-        goods = db.execute("SELECT * FROM shirts WHERE id = :id", id=id)
+        goods = db.execute("SELECT * FROM shoes WHERE id = :id", id=id)
         # Extract values from selected shirt record
         # Check if shirt is on sale to determine price
         if(goods[0]["onSale"] == 1):
@@ -93,8 +113,8 @@ def update():
         image = goods[0]["image"]
         subTotal = qty * price
         # Insert selected shirt into shopping cart
-        db.execute("INSERT INTO cart (id, qty, team, image, price, subTotal) VALUES (:id, :qty, :team, :image, :price, :subTotal)", id=id, qty=qty, team=team, image=image, price=price, subTotal=subTotal)
-        shoppingCart = db.execute("SELECT team, image, SUM(qty), SUM(subTotal), price, id FROM cart GROUP BY team")
+        db.execute("INSERT INTO cart (id, qty, team, image, price, subTotal,shoesize) VALUES (:id, :qty, :team, :image, :price, :subTotal,:shoesize)", id=id, qty=qty, team=team, image=image, price=price, subTotal=subTotal,shoesize=shoesize)
+        shoppingCart = db.execute("SELECT team,shoesize, image, SUM(qty), SUM(subTotal), price, id FROM cart GROUP BY team, shoesize")
         shopLen = len(shoppingCart)
         # Rebuild shopping cart
         for i in range(shopLen):
@@ -108,20 +128,20 @@ def update():
 def filter():
     if request.args.get('continent'):
         query = request.args.get('continent')
-        shirts = db.execute("SELECT * FROM shirts WHERE continent = :query ORDER BY team ASC", query=query )
+        shoes = db.execute("SELECT * FROM shoes WHERE continent = :query ORDER BY team ASC", query=query )
     if request.args.get('sale'):
         query = request.args.get('sale')
-        shirts = db.execute("SELECT * FROM shirts WHERE onSale = :query ORDER BY team ASC", query=query)
+        shoes = db.execute("SELECT * FROM shoes WHERE onSale = :query ORDER BY team ASC", query=query)
     if request.args.get('id'):
         query = int(request.args.get('id'))
-        shirts = db.execute("SELECT * FROM shirts WHERE id = :query ORDER BY team ASC", query=query)
+        shoes = db.execute("SELECT * FROM shoes WHERE id = :query ORDER BY team ASC", query=query)
     if request.args.get('kind'):
         query = request.args.get('kind')
-        shirts = db.execute("SELECT * FROM shirts WHERE kind = :query ORDER BY team ASC", query=query)
+        shoes = db.execute("SELECT * FROM shoes WHERE kind = :query ORDER BY team ASC", query=query)
     if request.args.get('price'):
         query = request.args.get('price')
-        shirts = db.execute("SELECT * FROM shirts ORDER BY onSalePrice ASC")
-    shirtsLen = len(shirts)
+        shoes = db.execute("SELECT * FROM shoes ORDER BY onSalePrice ASC")
+    shoesLen = len(shoes)
     # Initialize shopping cart variables
     shoppingCart = []
     shopLen = len(shoppingCart)
@@ -134,9 +154,9 @@ def filter():
             total += shoppingCart[i]["SUM(subTotal)"]
             totItems += shoppingCart[i]["SUM(qty)"]
         # Render filtered view
-        return render_template ("index.html", shoppingCart=shoppingCart, shirts=shirts, shopLen=shopLen, shirtsLen=shirtsLen, total=total, totItems=totItems, display=display, session=session )
+        return render_template ("index.html", shoppingCart=shoppingCart, shoes=shoes, shopLen=shopLen, shoesLen=shoesLen, total=total, totItems=totItems, display=display, session=session )
     # Render filtered view
-    return render_template ( "index.html", shirts=shirts, shoppingCart=shoppingCart, shirtsLen=shirtsLen, shopLen=shopLen, total=total, totItems=totItems, display=display)
+    return render_template ( "index.html", shoes=shoes, shoppingCart=shoppingCart, shoesLen=shoesLen, shopLen=shopLen, total=total, totItems=totItems, display=display)
 
 
 @app.route("/checkout/")
@@ -144,7 +164,7 @@ def checkout():
     order = db.execute("SELECT * from cart")
     # Update purchase history of current customer
     for item in order:
-        db.execute("INSERT INTO purchases (uid, id, team, image, quantity) VALUES(:uid, :id, :team, :image, :quantity)", uid=session["uid"], id=item["id"], team=item["team"], image=item["image"], quantity=item["qty"] )
+        db.execute("INSERT INTO purchases (uid, id, team, image, quantity,shoesize) VALUES(:uid, :id, :team, :image, :quantity, :shoesize)", uid=session["uid"], id=item["id"], team=item["team"], image=item["image"], quantity=item["qty"], shoesize=item["shoesize"]  )
     # Clear shopping cart
     db.execute("DELETE from cart")
     shoppingCart = []
@@ -190,20 +210,32 @@ def logged():
     # Get log in info from log in form
     user = request.form["username"].lower()
     pwd = request.form["password"]
+    captcha = request.form["captcha"].lower()
     #pwd = str(sha1(request.form["password"].encode('utf-8')).hexdigest())
     # Make sure form input is not blank and re-render log in page if blank
+    print(session.get('captcha').lower())
+    if captcha !=session.get('captcha').lower():
+        flash('Catpcha incorrect!', 'danger')
+        return redirect(url_for("index"))
     if user == "" or pwd == "":
         # return render_template ("login.html" )
         return redirect(url_for("index"))
     # Find out if info in form matches a record in user database
-    query = "SELECT * FROM users WHERE username = :user AND password = :pwd"
-    rows = db.execute ( query, user=user, pwd=pwd )
+    query = "SELECT * FROM users WHERE username = :user"
+    rows = db.execute (query, user=user)
 
     # If username and password match a record in database, set session variables
     if len(rows) == 1:
-        session['user'] = user
-        session['time'] = datetime.now( )
-        session['uid'] = rows[0]["id"]
+        if rows[0]['password'] != pwd:
+            flash('Password incorrect!', 'danger')
+            return redirect(url_for("index"))
+        else:
+            session['user'] = user
+            session['time'] = datetime.now( )
+            session['uid'] = rows[0]["id"]
+    else:
+        flash('Username not exists!', 'danger')
+        return redirect(url_for("index"))
     # Redirect to Home Page
     if 'user' in session:
         return redirect ( "/" )
@@ -218,11 +250,11 @@ def history():
     shoppingCart = []
     shopLen = len(shoppingCart)
     totItems, total, display = 0, 0, 0
-    # Retrieve all shirts ever bought by current user
-    myShirts = db.execute("SELECT * FROM purchases WHERE uid=:uid", uid=session["uid"])
-    myShirtsLen = len(myShirts)
+    # Retrieve all shoes ever bought by current user
+    myShoes = db.execute("SELECT * FROM purchases WHERE uid=:uid", uid=session["uid"])
+    myShoesLen = len(myShoes)
     # Render table with shopping history of current user
-    return render_template("history.html", shoppingCart=shoppingCart, shopLen=shopLen, total=total, totItems=totItems, display=display, session=session, myShirts=myShirts, myShirtsLen=myShirtsLen)
+    return render_template("history.html", shoppingCart=shoppingCart, shopLen=shopLen, total=total, totItems=totItems, display=display, session=session, myShoes=myShoes, myShoesLen=myShoesLen)
 
 
 @app.route("/logout/")
@@ -244,11 +276,15 @@ def registration():
     fname = request.form["fname"]
     lname = request.form["lname"]
     email = request.form["email"]
+    if password != confirm:
+        flash('Two password not matched!', 'danger')
+        return redirect(url_for("index"))
     # See if username already in the database
     rows = db.execute( "SELECT * FROM users WHERE username = :username ", username = username )
     # If username already exists, alert user
     if len( rows ) > 0:
-        return render_template ( "new.html", msg="Username already exists!" )
+        flash('Username already exists!','danger')
+        return redirect(url_for("index"))
     # If new user, upload his/her info into the users database
     new = db.execute ( "INSERT INTO users (username, password, fname, lname, email) VALUES (:username, :password, :fname, :lname, :email)",
                     username=username, password=password, fname=fname, lname=lname, email=email )
@@ -262,7 +298,7 @@ def cart():
         # Clear shopping cart variables
         totItems, total, display = 0, 0, 0
         # Grab info currently in database
-        shoppingCart = db.execute("SELECT team, image, SUM(qty), SUM(subTotal), price, id FROM cart GROUP BY team")
+        shoppingCart = db.execute("SELECT team,shoesize, image, SUM(qty), SUM(subTotal), price, id FROM cart GROUP BY team,shoesize")
         # Get variable values
         shopLen = len(shoppingCart)
         for i in range(shopLen):
@@ -271,21 +307,58 @@ def cart():
     # Render shopping cart
     return render_template("cart.html", shoppingCart=shoppingCart, shopLen=shopLen, total=total, totItems=totItems, display=display, session=session)
 
-@app.route('/feedback')
+@app.route('/feedback',methods=["GET","POST"])
 def feedback():
-    shoppingCart = []
-    shopLen = len(shoppingCart)
-    totItems, total, display = 0, 0, 0
+    if request.method == "GET":
+        shoppingCart = []
+        shopLen = len(shoppingCart)
+        totItems, total, display = 0, 0, 0
+        data=db.execute("SELECT * FROM feedbacks ")
+        feedbacks = sorted(data,key=lambda x: x["addtime"],reverse=True)
+        return render_template('feedback.html',shoppingCart=shoppingCart, shopLen=shopLen, total=total, totItems=totItems, display=display, session=session,feedbacks=feedbacks)
+    # 判断是否是登录状态
+    if 'user' not in session:
+        return redirect("/")  #这里应跳转到url_for("login")，但前端没写login.html 所以先跳转到主页
+    uid = session["uid"]
+    addtime = time.strftime("%Y-%m-%d %H:%M")
+    email = request.form.get('email')
+    nickname = request.form.get('username')
+    comments = request.form.get('content')
+    id = db.execute(
+        "INSERT INTO feedbacks (uid,nickname,comments,email,addtime) values (:uid,:nickname,:comments,:email,:addtime)",
+       uid=uid, nickname=nickname, addtime=addtime, comments=comments, email=email)
+    return redirect("/feedback")
 
-    return render_template('feedback.html',shoppingCart=shoppingCart, shopLen=shopLen, total=total, totItems=totItems, display=display, session=session)
 
-# @app.errorhandler(404)
-# def pageNotFound( e ):
-#     if 'user' in session:
-#         return render_template ( "404.html", session=session )
-#     return render_template ( "404.html" ), 404
+
+def generate_captcha_image():
+    image = Image.new('RGB', (120, 40), color=(73, 109, 137))
+    d = ImageDraw.Draw(image)
+    font = ImageFont.load_default()
+    font_size = 25
+    font = font.font_variant(size=font_size)
+
+    captcha_text = ''.join(random.choices(string.ascii_uppercase + string.digits, k=4))
+    d.text((10, 5), captcha_text, spacing=20, fill=(255, 255, 0), font=font)
+
+    for _ in range(random.randint(3, 5)):
+        start = (random.randint(0, image.width), random.randint(0, image.height))
+        end = (random.randint(0, image.width), random.randint(0, image.height))
+        d.line([start, end], fill=(random.randint(50, 200), random.randint(50, 200), random.randint(50, 200)))
+    return image, captcha_text
+
+@app.route('/captcha')  
+def captcha_image():  
+    image, captcha = generate_captcha_image()  
+    buffer = io.BytesIO()
+    image.save(buffer, format="PNG")
+    session['captcha'] = captcha
+    img_str = base64.b64encode(buffer.getvalue()).decode()
+    # img_tag = '<img src="data:image/png;base64,{}">'.format(img_str)
+    img_tag = 'data:image/png;base64,{}'.format(img_str)
+    return img_tag
 
 
 # Only needed if Flask run is not used to execute the server
 if __name__ == "__main__":
-   app.run( host='0.0.0.0', port=8080 )
+   app.run( host='0.0.0.0', port=8080 ,debug=True)
