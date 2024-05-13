@@ -36,18 +36,17 @@ ShoesStore - Feedback
             {% endfor %}
 
         </div>
-
         <div class="my-5 p-3 bg-white rounded shadow-sm border border-gray">
             <!-- <h4 class="text-center mb-3 text-primary">Leave a feedback</h4> -->
             <h5 class=" pb-2 mb-3 text-center text-muted">Leave a feedback</h5>
-            <form action="{{ url_for('feedback') }}" method="POST" class="form-horizontal" role="form">
+            <form id="feedback" action="{{ url_for('feedback') }}" method="POST" class="form-horizontal" role="form">
                 <div class="row">
-                    <div class="col-6">
-                        <input type="text" class="form-control" name="username" placeholder="Username" required />
-                    </div>
-                    <div class="col-6">
-                        <input type="email" class="form-control" name="email" placeholder="Email" required />
-                    </div>
+<!--                    <div class="col-6">-->
+<!--                        <input type="text" class="form-control" name="username" placeholder="Username" required />-->
+<!--                    </div>-->
+<!--                    <div class="col-6">-->
+<!--                        <input type="email" class="form-control" name="email" placeholder="Email" required />-->
+<!--                    </div>-->
                 </div>
                 <div class="row mt-3">
                     <textarea name="content" id="input" class="form-control mx-3" rows="5" required="required" placeholder="Content"></textarea>
@@ -59,4 +58,22 @@ ShoesStore - Feedback
         </div>
     </main>
 </div>
+
+{% endblock %}
+
+{% block scripts %}
+    {{ super() }}
+<script>
+    {% if not session  %}
+    console.log("not login");
+    document.getElementById('feedback').onsubmit = function(event) {
+        console.log("not login ");
+         event.preventDefault();
+          $('#registerModal').modal('hide');
+          $('#loginModal').modal('show');
+    };
+    {% else %}
+     console.log("login");
+    {%endif%}
+</script>
 {% endblock %}
