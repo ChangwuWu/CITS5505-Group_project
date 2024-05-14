@@ -26,6 +26,7 @@ ShoesStore - Home
                         <th scope="col">Item</th>
                         <th scope="col">Team</th>
                         <th scope="col">Quantity</th>
+                        <th scope="col">Size</th>
                         <th scope="col">Unit Price</th>
                         <th scope="col">Sub-Total</th>
                         <th scope="col"></th>
@@ -42,8 +43,10 @@ ShoesStore - Home
                         <td><form action="/update/">
                             <input type="hidden" name="id" value="{{shoppingCart[i]["id"]}}" />
                             <input type="number" name="quantity" min="1" max="10" size="5" value="{{ shoppingCart[i]['SUM(qty)'] }}">
+                            <input type="number" name="shoesize" min="35" max="50" size="5" value="{{ shoppingCart[i]['shoesize'] }}">
                             <button type="submit" class="btn btn-warning checkout">Update</button>
                           </form></td>
+                        <td>{{ shoppingCart[i]["shoesize"] }}</td>
                         <td>{{ '${:,.2f}'.format(shoppingCart[i]["price"]) }}</td>
                         <td>{{ '${:,.2f}'.format(shoppingCart[i]['SUM(subTotal)']) }}</td>
                         <td>
@@ -72,7 +75,7 @@ ShoesStore - Home
                     </tbody>
                     <tfoot>
                       <tr>
-                        <td colSpan="7">Get some shirts now!<br />
+                        <td colSpan="7">Get some shoes now!<br />
                           <div>
                             <a href="/"><button type="button" class="btn btn-secondary" data-dismiss="modal">Continue Shopping</button></a>
                           </div>
