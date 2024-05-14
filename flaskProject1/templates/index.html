@@ -7,29 +7,42 @@ ShoesStore - Home
 {% block body %}
 <!-- Main Store Body -->
       <div class="row" id="shirtCard">
-      {% for i in range(shirtsLen) %}
+      {% for i in range(shoesLen) %}
           <div class="col-sm">
               <div class="card text-center">
                   <div class="card-body">
                     <form action="/buy/" methods="POST">
-                      <img src="/static/img/{{shirts[i]["image"]}}" class="shirt" alt="" />
-                      <h5 class="card-title">{{shirts[i]["team"]}}</h5>
-                      {% if shirts[i]["onSale"] %}
+                      <img src="/static/img/{{shoes[i]["image"]}}" class="shirt" alt="" />
+                      <h5 class="card-title">{{shoes[i]["team"]}}</h5>
+                      {% if shoes[i]["onSale"] %}
                         <img src="/static/img/sale-icon.png" width="26px" />
-                        <h4 class="card-text price" style="color:red; display:inline">{{ '{:,.2f}'.format(shirts[i]["onSalePrice"]) }}</h4>
+                        <h4 class="card-text price" style="color:red; display:inline">{{ '{:,.2f}'.format(shoes[i]["onSalePrice"]) }}</h4>
                       {% else %}
-                        <h4 class="card-text price">{{ '{:,.2f}'.format(shirts[i]["price"]) }}</h4>
+                        <h4 class="card-text price">{{ '{:,.2f}'.format(shoes[i]["price"]) }}</h4>
                       {% endif %}
                       <div class="stepper-input">
                           <span class="decrement target">-</span>
                           <input class="quantity" name="quantity" value='0' />
                           <span class="increment target">+</span>
                       </div>
-                      <input type="hidden" name="id" value="{{shirts[i]["id"]}}" />
-                      {% if not session %}
-                      <input type="hidden" name="loggedin" value="0" />
-                      {% else %}
+                      <input type="hidden" name="id" value="{{shoes[i]["id"]}}" />
+                      <div class="my-3">
+                        <input type="hidden" name="shoesize" value="" />
+                        {% if shoes[i]["kind"] == 'men' %}
+                          {% for item in range(39,46) %}
+                            <span class="rounded-circle p-1 small bg-warning text-white spansize">{{item}}</span>
+                          {% endfor %}
+                        {% else %}
+                          {% for item in range(34,41) %}
+                            <span class="rounded-circle p-1 small bg-warning text-white spansize">{{item}}</span>
+                          {% endfor %}
+                        {% endif %} 
+
+                      </div>
+                      {% if 'user' in session %}
                       <input type="hidden" name="loggedin" value="1" />
+                      {% else %}
+                      <input type="hidden" name="loggedin" value="0" />
                       {% endif %}
                       <input type="submit" class="btn btn-primary addToCart" value="Add To Cart" /><br /><br/>
                       <div class="alert alert-danger flashMessage" style="text-align: center; display:none; font-size:0.9em;"></div>

@@ -37,8 +37,9 @@
                       <tr>
                         <th scope="col">#</th>
                         <th scope="col">Item</th>
-                        <th scope="col">Team</th>
+                        <th scope="col">Name</th>
                         <th scope="col">Quantity</th>
+                        <th scope="col">Size</th>
                         <th scope="col">Unit Price</th>
                         <th scope="col">Sub-Total</th>
                         <th scope="col"></th>
@@ -53,14 +54,9 @@
                         <td><img src="/static/img/{{ shoppingCart[i]["image"] }}" width="30px" alt="{{ shoppingCart[i]["team"] }}" /></td>
                         <td>{{ shoppingCart[i]["team"] }}</td>
                         <td>{{ shoppingCart[i]['SUM(qty)'] }}</td>
+                        <td>{{ shoppingCart[i]["shoesize"] }}</td>
                         <td>{{ '${:,.2f}'.format(shoppingCart[i]["price"]) }}</td>
-                        <td>{{ '${:,.2f}'.format(shoppingCart[i]['SUM(subTotal)']) }}</td><!--
-                        <td>
-                          <form action="/remove/" methods="GET">
-                            <input type="hidden" name="id" value="{{ shoppingCart[i]["id"] }}" />
-                            <button type="submit" class="btn btn-secondary btn-sm" id="removeFromCart">Remove</button>
-                          </form>
-                        </td>-->
+                        <td>{{ '${:,.2f}'.format(shoppingCart[i]['SUM(subTotal)']) }}</td>
                       </tr>
                     </tbody>
                     {% endfor %}
@@ -82,7 +78,7 @@
                     </tbody>
                     <tfoot>
                       <tr>
-                        <td colSpan="7">Get some shirts now!<br />
+                        <td colSpan="7">Get some Shoes now!<br />
                           <div class="modal-footer">
                             <button type="button" class="btn btn-primary" data-dismiss="modal">Continue Shopping</button>
                           </div>
@@ -112,11 +108,11 @@
             <i class="fas fa-male"></i> Men's
           </a>
           <div class="dropdown-menu">
-              <a class="dropdown-item" href="/">All</a>
+              <a class="dropdown-item" href="/?gender=men">All</a>
               <a class="dropdown-item" href="/?gender=men&category=basketball"> basketball </a>
               <a class="dropdown-item" href="/?gender=men&category=running"> running </a>
               <a class="dropdown-item" href="/?gender=men&category=slides"> slides </a>
-              <a class="dropdown-item" href="/?gender=men&category=Canvas & Skate Shoes"> Canvas & Skate Shoes </a>
+              <a class="dropdown-item" href="/?gender=men&category=Canvas"> Canvas </a>
               <a class="dropdown-item" href="/?gender=men&category=court"> court </a>
           </div>
         </li>
@@ -125,11 +121,11 @@
             <i class="fas fa-female"></i> Women's
           </a>
           <div class="dropdown-menu">
-              <a class="dropdown-item" href="/">All</a>
+              <a class="dropdown-item" href="/?gender=women">All</a>
               <a class="dropdown-item" href="/?gender=women&category=basketball"> basketball </a>
               <a class="dropdown-item" href="/?gender=women&category=running"> running </a>
               <a class="dropdown-item" href="/?gender=women&category=slides"> slides </a>
-              <a class="dropdown-item" href="/?gender=women&category=Canvas & Skate Shoes"> Canvas & Skate Shoes </a>
+              <a class="dropdown-item" href="/?gender=women&category=Canvas"> Canvas </a>
               <a class="dropdown-item" href="/?gender=women&category=court"> court </a>
               
           </div>
@@ -145,7 +141,7 @@
           </span>
         </button>
       </div>
-      {% if session %}
+      {% if 'user' in session %}
       <ul class="navbar-nav ">
         <li class="nav-item mr-5"><a href="/history/" class="nav-link"> <i class="fab fa-shopify"></i> You Bought</a></li>
         <li class="nav-item"><a href="/logout/" class="nav-link btn btn-sm btn-warning text-dark"> Logout</a></li>
@@ -159,12 +155,24 @@
     </nav>
   </header><br />
   <main>
+    <div class="container-fluid p-0">
+      {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+      {% for category, message in messages %}
+      <div class="alert alert-{{ category }}" style="text-align: center;width: 100%; margin-bottom: 5px;">
+        <strong>{{ message }}</strong>
+      </div>
+      {% endfor %}
+      {% endif %}
+      {% endwith %}
+  </div>
     <div class="container">
       {% if display == 1 %}
       <div class="alert alert-success flashMessage" style="text-align:center">
         <strong>Your item was successfully removed from shopping cart!</strong>
       </div>
       {% endif %}
+
     {% block body %}{% endblock %}
     </div>
     <div class="modal fade" id="loginModal" tabindex="-1" role="dialog" aria-hidden="true">
@@ -181,6 +189,16 @@
               <div class="my-4">
                 <input type="password" class="form-control" name="password"  placeholder="Password" required/>
               </div>
+              <div class="my-4 row">
+                <div class="col-8">
+                  <input type="text"  class="form-control" name="captcha" placeholder="Captcha" required> 
+                </div>
+                <div class="col-4" id="captchadiv">
+                  <img  class="form-control p-0" src="" alt="Captcha" id="captchaimg" style="width: 100%; height: 40px;">
+                </div>
+              </div>
+               
+              
               <div class="row mt-4">
                 <div class="col-6">
                   <div class="form-group">
@@ -287,7 +305,35 @@
               $('#registerModal').modal('hide');
               $('#loginModal').modal('show');
             });
+            $.ajax({
+                url: "/captcha",
+                method: "GET",
+                success: function(data) {
+                    // $("#result").html(data);
+                    console.log(data);
+                    $('#captchaimg').attr('src', data); 
+                },
+                error: function(xhr, status, error) {
+                    console.error(xhr.responseText);
+                }
+            });
+          
+          $('#captchadiv').click(function(){
+            $.ajax({
+                url: "/captcha",
+                method: "GET",
+                success: function(data) {
+                    // $("#result").html(data);
+                    console.log(data);
+                    $('#captchaimg').attr('src', data); 
+                    console.log($('#captchaimg').src);
+                },
+                error: function(xhr, status, error) {
+                    console.error(xhr.responseText);
+                }
+            });
           })
+        });
         </script>
     </body>
 </html>
