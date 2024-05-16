@@ -315,18 +315,14 @@ def feedback():
         totItems, total, display = 0, 0, 0
         data=db.execute("SELECT * FROM feedbacks ")
         feedbacks = sorted(data,key=lambda x: x["addtime"],reverse=True)
-        return render_template('feedback.html',shoppingCart=shoppingCart, shopLen=shopLen, total=total, totItems=totItems, display=display, session=session,feedbacks=feedbacks)
-    # 判断是否是登录状态
-    if 'user' not in session:
-        return redirect("/")  #这里应跳转到url_for("login")，但前端没写login.html 所以先跳转到主页
+        return render_template('feedback.html',shoppingCart=shoppingCart, shopLen=shopLen, total=total, totItems=totItems, display=display, session=session if "user" in session else {},feedbacks=feedbacks)
     uid = session["uid"]
     addtime = time.strftime("%Y-%m-%d %H:%M")
-    email = request.form.get('email')
-    nickname = request.form.get('username')
+    nickname = session['user']
     comments = request.form.get('content')
     id = db.execute(
-        "INSERT INTO feedbacks (uid,nickname,comments,email,addtime) values (:uid,:nickname,:comments,:email,:addtime)",
-       uid=uid, nickname=nickname, addtime=addtime, comments=comments, email=email)
+        "INSERT INTO feedbacks (uid,nickname,comments,addtime) values (:uid,:nickname,:comments,:addtime)",
+       uid=uid, nickname=nickname, addtime=addtime, comments=comments)
     return redirect("/feedback")
 
 
