@@ -21,8 +21,9 @@ To get started with SneakerHub, follow these steps:
    ```sh
    pip install -r requirements.txt
    
-3. **Don't forget your API Key**:
-   
+3. **Don't forget about your API Key**:
+   ```sh
+   OPENAI_API_KEY = attach your api key here!
    This project is involved with AAI-related interactions, please make sure you have a OpenAI API key standing by.
    Attach your API Key to the .env file, variable is prepared already.
    It may cost you some money! 
