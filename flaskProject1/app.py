@@ -3,6 +3,8 @@ import time
 from flask_session import Session
 from flask import Flask, render_template, redirect, request, session, jsonify, url_for, flash
 from datetime import datetime
+from openai import OpenAI
+from dotenv import dotenv_values
 
 from PIL import Image, ImageDraw, ImageFont
 import random
@@ -12,6 +14,9 @@ import io
 
 # # Instantiate Flask object named app
 app = Flask(__name__)
+
+config = dotenv_values(".env")
+client = OpenAI(api_key=config["OPENAI_API_KEY"])
 
 # # Configure sessions
 app.config["SESSION_PERMANENT"] = False
@@ -354,6 +359,42 @@ def captcha_image():
     img_tag = 'data:image/png;base64,{}'.format(img_str)
     return img_tag
 
+@app.route('/chat', methods=['POST'])
+def chat():
+    user_message = request.json.get('message')
+
+    # Offensive keywords, to do: figure out how to detect more automatically
+    OFFENSIVE_KEYWORDS = ["fuck", "shit", "bitch", "asshole"]
+
+    # Fresh prompt
+    prompt = f"""
+        You are an assistant for an online shoe store. Help the customers with their questions about shoe sizes, fit, styles, 
+        and any other related inquiries. For example:
+        - "How do I choose the right shoe size?" A: Right shoe size can be chosen from the purchase panel
+        - "What is the best style for running?" B: You can use the filter to determine the best!
+        - "Can you help me find a shoe for a formal event?" C: You can search for the specific shoe you are looking for
+        Please provide helpful and accurate information based on the customer's question. If the user's request is somehow offensive, 
+        you can close the current session.
+        User: {user_message}
+        """
+
+    try:
+        # OpenAI API(after the update on March)
+        response = client.chat.completions.create(
+            messages=[{"role": "user", "content": prompt}],
+            model="gpt-4",
+            max_tokens=400,
+        )
+
+        bot_message = response.choices[0].message.content.strip()
+
+        # offensive content detection
+        offensive_detected = any(word in user_message.lower() for word in OFFENSIVE_KEYWORDS)
+
+        return jsonify({"message": bot_message, "offensive": offensive_detected})
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 # Only needed if Flask run is not used to execute the server
 if __name__ == "__main__":
