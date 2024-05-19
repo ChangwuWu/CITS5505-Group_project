@@ -15,7 +15,7 @@ import io
 # # Instantiate Flask object named app
 app = Flask(__name__)
 
-config = dotenv_values(".idea/.env")
+config = dotenv_values(".env")
 client = OpenAI(api_key=config["OPENAI_API_KEY"])
 
 # # Configure sessions
